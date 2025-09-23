@@ -1,139 +1,159 @@
-# 📸🎥 Serverless Media Processing with AWS CDK
+# 🛒 Customer Support Chatbot (GenAI + Serverless)
 
-This project implements a **serverless application** for **image & video processing** using **AWS Rekognition, S3, DynamoDB, SNS, and Lambda**.
-It automatically detects labels for images and videos uploaded to S3, stores the results in DynamoDB, and sends notifications via SNS.
+This project builds a **serverless customer support chatbot** using **AWS CDK (Python)**.
+It integrates **Amazon Bedrock (Llama 3 Instruct)** with a **FAQ database (DynamoDB)** and a **Knowledge Base (S3)** to answer customer queries in real-time through an **API Gateway + Lambda** setup.
 
 ---
 
-## 🚀 Features
+## 📌 Architecture
 
-* **Image Processing** → Detects objects/labels in uploaded images using Rekognition.
-* **Video Processing** → Starts Rekognition Video label detection for uploaded videos.
-* **Results Storage** → Saves metadata & labels into DynamoDB.
-* **Notifications** → Sends results to an SNS topic (e.g., email).
-* **Serverless** → Scales automatically, pay-per-use.
+**Flow:**
+
+1. Customer sends a query → **API Gateway (POST /chat)**
+2. Request goes to **Lambda (Chatbot)**
+
+   * Checks **FAQ table (DynamoDB)** for an exact match
+   * Loads **knowledge base documents (S3)** as context
+   * Calls **Amazon Bedrock (Llama 3 Instruct)** for AI response
+3. Response returned to the user with source (`faq` or `bedrock`)
+
+**AWS Services Used:**
+
+* **Amazon API Gateway** → REST endpoint for chatbot queries
+* **AWS Lambda** → Orchestrates FAQ lookup + Bedrock call
+* **Amazon DynamoDB** → Stores FAQ Q\&A pairs
+* **Amazon S3** → Stores knowledge base documents (e.g., return policy, shipping guide)
+* **Amazon Bedrock** → Provides GenAI response (Llama 3 Instruct)
 
 ---
 
 ## 📂 Project Structure
 
 ```
-media-processing-cdk/
-├── app.py                 # CDK app entry
-├── requirements.txt       # Python dependencies
-└── serverless_app_stack.py  # CDK stack with all AWS resources
+serverless-chatbot/
+├── app.py                  # CDK entry point
+├── serverless_app_stack.py # CDK Stack (infra)
+├── requirements.txt        # Python dependencies
+└── kb/                     # Knowledge base docs (uploaded to S3)
+    ├── loyalty_program.txt
+    ├── return_policy.txt
+    └── shipping_guide.txt
 ```
 
 ---
 
-## 🛠️ How to Create This Project
+## ⚙️ How to Create this Project
 
-1. **Install prerequisites**
-
-   * [Python 3.11+](https://www.python.org/downloads/)
-   * [AWS CDK](https://docs.aws.amazon.com/cdk/latest/guide/getting_started.html)
-   * AWS CLI (`aws configure`) with credentials set
+1. **Clone & setup environment**
 
    ```bash
-   npm install -g aws-cdk
-   ```
-
-2. **Create project folder & initialize CDK**
-
-   ```bash
-   mkdir media-processing-cdk && cd media-processing-cdk
-   cdk init app --language python
-   ```
-
-3. **Install dependencies**
-
-   ```bash
+   git clone <your-repo-url> serverless-chatbot
+   cd serverless-chatbot
    python3 -m venv .venv
    source .venv/bin/activate
    pip install -r requirements.txt
    ```
 
-   Update `requirements.txt` to include:
+2. **Initialize CDK project**
 
-   ```txt
-   aws-cdk-lib
-   constructs
+   ```bash
+   cdk init app --language python
    ```
 
-4. **Add the stack code**
-   Replace `serverless_app_stack.py` with the code you provided (contains S3, Lambda, Rekognition, DynamoDB, SNS).
+3. **Add dependencies**
 
-5. **Bootstrap & Deploy**
+   ```bash
+   pip install aws-cdk-lib constructs boto3
+   ```
+
+4. **Add knowledge base docs**
+   Create a folder `kb/` and add text files like:
+
+   ```
+   loyalty_program.txt
+   return_policy.txt
+   shipping_guide.txt
+   ```
+
+5. **Bootstrap & deploy**
 
    ```bash
    cdk bootstrap
    cdk deploy
    ```
 
-   CDK will output the S3 bucket name created.
+---
+
+## 🧩 Details About This Project
+
+* **FAQ Table (DynamoDB)** → Preloaded with sample FAQs:
+
+  * “What is your return policy?”
+  * “Do you ship internationally?”
+  * “What payment methods are accepted?”
+
+* **Knowledge Base (S3)** → Stores longer reference docs:
+
+  * `loyalty_program.txt` → Explains customer loyalty program
+  * `return_policy.txt` → Company return policy
+  * `shipping_guide.txt` → Shipping details
+
+* **Lambda**:
+
+  * First tries **FAQ lookup** in DynamoDB
+  * If not found, loads S3 docs and calls **Bedrock Llama 3 Instruct** with proper `[INST] ... [/INST]` format
+  * Returns response with `{"query": "...", "answer": "...", "source": "faq|bedrock"}`
+
+* **Amazon Bedrock**:
+
+  * Uses **Meta Llama 3 Instruct (70B or 8B)**
+  * You must have access granted in **Bedrock console**
 
 ---
 
-## 📌 Details About This Project
+## 🔍 How to Test
 
-* **S3 Bucket** → Upload media files (`.jpg`, `.jpeg`, `.png`, `.mp4`, `.mov`, `.avi`).
-* **Lambda (`MediaProcessorLambda`)** →
-
-  * For **images**: Calls `rekognition.detect_labels` → saves labels in DynamoDB → sends SNS notification.
-  * For **videos**: Calls `rekognition.start_label_detection` → polls `get_label_detection` until job finishes → saves results in DynamoDB → sends SNS notification.
-* **DynamoDB** → Stores file name, type (image/video), detected labels, and status.
-* **SNS** → Sends processing results to your email (subscribed in stack).
-
----
-
-## 🧪 How to Test
-
-1. **Upload a test image**
+1. Get your API endpoint from CDK output:
 
    ```bash
-   aws s3 cp test.jpg s3://<MediaBucketName>
+   ApiUrl = https://<api-id>.execute-api.<region>.amazonaws.com/prod/chat
    ```
 
-   * Lambda is triggered.
-   * Rekognition detects labels.
-   * DynamoDB stores results.
-   * SNS sends email with detected labels.
-
-2. **Upload a test video**
+2. Send queries via `curl`:
 
    ```bash
-   aws s3 cp sample.mp4 s3://<MediaBucketName>
+   curl -X POST \
+     -H "Content-Type: application/json" \
+     -d '{"query": "What are the shipping options?"}' \
+     https://<api-id>.execute-api.<region>.amazonaws.com/prod/chat
    ```
 
-   * Lambda starts Rekognition Video label detection.
-   * Job runs asynchronously, results are fetched & stored in DynamoDB.
-   * SNS sends notification when done.
-
-3. **Check DynamoDB**
-
-   ```bash
-   aws dynamodb scan --table-name MediaResultsTable
-   ```
-
-   You’ll see entries like:
+   ✅ Example Response:
 
    ```json
    {
-     "fileName": "test.jpg",
-     "type": "image",
-     "labels": ["Person", "Car", "Tree"],
-     "status": "IMAGE_PROCESSED"
+     "query": "What are the shipping options?",
+     "answer": "We offer free standard shipping on orders over $50. Express shipping is also available at checkout. International orders take 7–14 business days.",
+     "source": "bedrock"
    }
    ```
 
-   Or for video:
+3. Test an **FAQ** question:
+
+   ```bash
+   curl -X POST \
+     -H "Content-Type: application/json" \
+     -d '{"query": "Do you ship internationally?"}' \
+     https://<api-id>.execute-api.<region>.amazonaws.com/prod/chat
+   ```
+
+   ✅ Example Response:
 
    ```json
    {
-     "fileName": "sample.mp4",
-     "type": "video",
-     "labels": ["Dog", "Running", "Park"],
-     "status": "VIDEO_PROCESSED"
+     "query": "Do you ship internationally?",
+     "answer": "Yes—we ship to 50+ countries. Delivery times vary by country.",
+     "source": "faq"
    }
    ```
 
