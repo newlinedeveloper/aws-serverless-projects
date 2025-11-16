@@ -4,25 +4,39 @@ import os
 import aws_cdk as cdk
 
 from serverless_app.serverless_app_stack import ServerlessAppStack
+from serverless_app.stacks.realtime_processing_stack import RealtimeProcessingStack
+from serverless_app.stacks.etl_pipeline_stack import EtlPipelineStack
+from serverless_app.stacks.websocket_chat_stack import WebSocketChatStack
+from serverless_app.stacks.data_lake_stack import DataLakeStack
+from serverless_app.stacks.ai_services_stack import AiServicesStack
+from serverless_app.stacks.event_driven_stack import EventDrivenStack
+from serverless_app.stacks.serverless_api_stack import ServerlessApiStack
 
 
 app = cdk.App()
-ServerlessAppStack(app, "ServerlessAppStack",
-    # If you don't specify 'env', this stack will be environment-agnostic.
-    # Account/Region-dependent features and context lookups will not work,
-    # but a single synthesized template can be deployed anywhere.
 
-    # Uncomment the next line to specialize this stack for the AWS Account
-    # and Region that are implied by the current CLI configuration.
+# Original Media Processing Stack
+# ServerlessAppStack(app, "ServerlessAppStack")
 
-    #env=cdk.Environment(account=os.getenv('CDK_DEFAULT_ACCOUNT'), region=os.getenv('CDK_DEFAULT_REGION')),
+# Real-Time Data Processing Pipeline Stack
+# RealtimeProcessingStack(app, "RealtimeProcessingStack")
 
-    # Uncomment the next line if you know exactly what Account and Region you
-    # want to deploy the stack to. */
+# Scheduled ETL Pipeline Stack
+# EtlPipelineStack(app, "EtlPipelineStack")
 
-    #env=cdk.Environment(account='123456789012', region='us-east-1'),
+# # WebSocket Chat Application Stack
+# WebSocketChatStack(app, "WebSocketChatStack")
 
-    # For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html
-    )
+# # Serverless Data Lake Stack
+# DataLakeStack(app, "DataLakeStack")
+
+# # AI Services Project Stack
+# AiServicesStack(app, "AiServicesStack")
+
+# # Event-Driven Architecture Stack
+# EventDrivenStack(app, "EventDrivenStack")
+
+# # Serverless REST API Stack
+ServerlessApiStack(app, "ServerlessApiStack")
 
 app.synth()
